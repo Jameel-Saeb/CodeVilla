@@ -26,6 +26,24 @@ function getAllConnectedClients(roomId) {
     );
 }
 
+const roomStates = {}; // Keys are roomIds, values are objects with language keys and code values
+
+function getLatestCodeForRoom(roomId, language) {
+    // Check if the room and language exist in the storage
+    if (roomStates[roomId] && roomStates[roomId][language]) {
+        return roomStates[roomId][language];
+    }
+    // Return a default empty string if no code is found
+    return '';
+}
+
+function updateRoomCode(roomId, language, code) {
+    if (!roomStates[roomId]) {
+        roomStates[roomId] = {};
+    }
+    roomStates[roomId][language] = code;
+}
+
 io.on('connection', (socket) => {
     console.log('socket connected', socket.id);
 
@@ -42,13 +60,27 @@ io.on('connection', (socket) => {
         });
     });
 
-    socket.on(ACTIONS.CODE_CHANGE, ({ roomId, code }) => {
-        socket.in(roomId).emit(ACTIONS.CODE_CHANGE, { code });
+    socket.on(ACTIONS.CODE_CHANGE, ({ roomId, code, language }) => {
+        // Update the room's code for the specific language
+        updateRoomCode(roomId, language, code);
+        // Broadcast the code change to other clients in the room
+        socket.in(roomId).emit(ACTIONS.CODE_CHANGE, { code, language });
     });
 
-    socket.on(ACTIONS.SYNC_CODE, ({ socketId, code }) => {
-        io.to(socketId).emit(ACTIONS.CODE_CHANGE, { code });
+    // Note: You need to implement getLatestCodeForRoom yourself based on how you store room states
+    socket.on(ACTIONS.SYNC_CODE, ({ socketId, roomId }) => {
+        // Fetch the latest code for each language
+        const htmlCode = getLatestCodeForRoom(roomId, 'html');
+        const cssCode = getLatestCodeForRoom(roomId, 'css');
+        const jsCode = getLatestCodeForRoom(roomId, 'javascript');
+    
+        // Send the latest code for each language to the newly joined user
+        io.to(socketId).emit(ACTIONS.CODE_CHANGE, { code: htmlCode, language: 'html' });
+        io.to(socketId).emit(ACTIONS.CODE_CHANGE, { code: cssCode, language: 'css' });
+        io.to(socketId).emit(ACTIONS.CODE_CHANGE, { code: jsCode, language: 'javascript' });
     });
+    
+
 
     socket.on('disconnecting', () => {
         const rooms = [...socket.rooms];

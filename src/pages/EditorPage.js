@@ -1,10 +1,9 @@
-// Editor Page
-
 import React, { useState, useRef, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import ACTIONS from '../Actions';
 import Client from '../components/Client';
 import Editor from '../components/Editor';
+import Button from '../components/Button';
 import { initSocket } from '../socket';
 import {
     useLocation,
@@ -12,8 +11,33 @@ import {
     Navigate,
     useParams,
 } from 'react-router-dom';
+import 'codemirror/lib/codemirror.css';
+import 'codemirror/theme/dracula.css';
+import 'codemirror/theme/material.css';
+import 'codemirror/theme/mdn-like.css';
+import 'codemirror/theme/the-matrix.css';
+import 'codemirror/theme/night.css';
+import 'codemirror/mode/xml/xml';
+import 'codemirror/mode/javascript/javascript';
+import 'codemirror/mode/css/css';
+import { editableInputTypes } from '@testing-library/user-event/dist/utils';
 
-const EditorPage = () => {
+const EditorPage = ({ language }) => {
+    //handeling choosen language
+    const [openedEditor, setOpenedEditor] = useState("html");
+    const [activeButton, setActiveButton] = useState("html");
+  
+    const [html, setHtml] = useState("");
+    const [css, setCss] = useState("");
+    const [js, setJs] = useState("");
+    const [srcDoc, setSrcDoc] = useState(``);
+  
+    const onTabClick = (editorName) => {
+      setOpenedEditor(editorName);
+      setActiveButton(editorName);
+    };
+
+    //handeling clients
     const socketRef = useRef(null);
     const codeRef = useRef(null);
     const location = useLocation();
@@ -38,21 +62,20 @@ const EditorPage = () => {
                 username: location.state?.username,
             });
 
-            // Listening for joined event
-            socketRef.current.on(
-                ACTIONS.JOINED,
-                ({ clients, username, socketId }) => {
-                    if (username !== location.state?.username) {
-                        toast.success(`${username} joined the room.`);
-                        console.log(`${username} joined`);
-                    }
-                    setClients(clients);
-                    socketRef.current.emit(ACTIONS.SYNC_CODE, {
-                        code: codeRef.current,
-                        socketId,
-                    });
+            // Inside the useEffect where you handle socket connections
+            socketRef.current.on(ACTIONS.JOINED, ({ clients, username, socketId }) => {
+                if (username !== location.state?.username) {
+                    toast.success(`${username} joined the room.`);
+                    console.log(`${username} joined`);
                 }
-            );
+                setClients(clients);
+                // Adjust this to send the current state for each language
+                socketRef.current.emit(ACTIONS.SYNC_CODE, {
+                    roomId,
+                    socketId,
+                    code: { html: html, css: css, js: js }, // Example adjustment
+                });
+            });
 
             // Listening for disconnected
             socketRef.current.on(
@@ -89,6 +112,26 @@ const EditorPage = () => {
         reactNavigator('/');
     }
 
+    useEffect(() => {
+        const timeOut = setTimeout(() => {
+          setSrcDoc(
+            `
+              <html>
+                <body>${html}</body>
+                <style>${css}</style>
+                <script>${js}</script>
+              </html>
+            `
+          );
+        }, 250);
+    
+        return () => clearTimeout(timeOut);
+      }, [html, css, js]);
+
+    function handleChange(code) {
+        codeRef.current = code;
+    }
+
     if (!location.state) {
         return <Navigate to="/" />;
     }
@@ -98,7 +141,7 @@ const EditorPage = () => {
             <div className="aside">
                 <div className="asideInner">
                     <div className="logo">
-                        <h1>CodeVilla
+                        <h1> Code Live Collab
                         </h1>
                     </div>
                     <h3>Connected</h3>
@@ -119,14 +162,58 @@ const EditorPage = () => {
                 </button>
             </div>
             <div className="editorWrap">
-                <Editor
-                    socketRef={socketRef}
-                    roomId={roomId}
-                    onCodeChange={(code) => {
-                        codeRef.current = code;
-                    }}
+            <div className="tab-button-container">
+                <Button
+                backgroundColor={activeButton === "html" ? "blue" : ""}
+                title="HTML"
+                onClick={() => {
+                    onTabClick("html");
+                }}
                 />
+                <Button
+                backgroundColor={activeButton === "css" ? "blue" : ""}
+                title="CSS"
+                onClick={() => {
+                    onTabClick("css");
+                }}
+                />
+                <Button
+                backgroundColor={activeButton === "js" ? "blue" : ""}
+                title="JavaScript"
+                onClick={() => {
+                    onTabClick("js");
+                }}
+                
+                />
+            
+                </div>
+                {openedEditor === "html" ? (
+            <Editor
+                socketRef={socketRef}
+                roomId={roomId}
+                onCodeChange={setHtml}
+                language="xml"
+                value={html}
+            />
+        ) : openedEditor === "css" ? (
+            <Editor
+                socketRef={socketRef}
+                roomId={roomId}
+                onCodeChange={setCss}
+                language="css"
+                value={css}
+            />
+        ) : (
+            <Editor
+                socketRef={socketRef}
+                roomId={roomId}
+                onCodeChange={setJs}
+                language="javascript"
+                value={js}
+            />
+        )}
             </div>
+
         </div>
     );
 };

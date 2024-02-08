@@ -4,6 +4,15 @@ import { Toaster } from 'react-hot-toast';
 import Home from './pages/Home';
 import EditorPage from './pages/EditorPage';
 
+import 'codemirror/addon/edit/closetag';
+import 'codemirror/addon/edit/closebrackets';
+import 'codemirror/addon/edit/matchbrackets';
+import 'codemirror/addon/edit/matchtags';
+import 'codemirror/addon/fold/foldgutter';
+import 'codemirror/addon/hint/show-hint';
+import 'codemirror/addon/hint/show-hint.css';
+import 'codemirror/addon/hint/javascript-hint';
+
 function App() {
     return (
         <>
@@ -24,7 +33,11 @@ function App() {
                     <Route path="/" element={<Home />}></Route>
                     <Route
                         path="/editor/:roomId"   
-                        element={<EditorPage />}
+                        element={
+                            <EditorPage
+                                language="xml"
+                          />
+                        }
                     ></Route>
                 </Routes>
             </BrowserRouter>
