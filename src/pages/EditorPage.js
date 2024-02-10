@@ -20,12 +20,11 @@ import 'codemirror/theme/night.css';
 import 'codemirror/mode/xml/xml';
 import 'codemirror/mode/javascript/javascript';
 import 'codemirror/mode/css/css';
-import { editableInputTypes } from '@testing-library/user-event/dist/utils';
 
 const EditorPage = ({ language }) => {
     //handeling choosen language
-    const [openedEditor, setOpenedEditor] = useState("html");
-    const [activeButton, setActiveButton] = useState("html");
+    const [openedEditor, setOpenedEditor] = useState("");
+    const [activeButton, setActiveButton] = useState("");
   
     const [html, setHtml] = useState("");
     const [css, setCss] = useState("");
@@ -33,13 +32,18 @@ const EditorPage = ({ language }) => {
     const [srcDoc, setSrcDoc] = useState(``);
   
     const onTabClick = (editorName) => {
-      setOpenedEditor(editorName);
-      setActiveButton(editorName);
+        setOpenedEditor(editorName);
+        setActiveButton(editorName);
+        
+        // Request the latest code for the active editor from the server
+        socketRef.current.emit(ACTIONS.REQUEST_LATEST_CODE, {
+            roomId,
+            language: editorName,
+        });
     };
 
     //handeling clients
     const socketRef = useRef(null);
-    const codeRef = useRef(null);
     const location = useLocation();
     const { roomId } = useParams();
     const reactNavigator = useNavigate();
@@ -128,9 +132,6 @@ const EditorPage = ({ language }) => {
         return () => clearTimeout(timeOut);
       }, [html, css, js]);
 
-    function handleChange(code) {
-        codeRef.current = code;
-    }
 
     if (!location.state) {
         return <Navigate to="/" />;
@@ -203,7 +204,7 @@ const EditorPage = ({ language }) => {
                 language="css"
                 value={css}
             />
-        ) : (
+        ) : openedEditor === "js" ?(
             <Editor
                 socketRef={socketRef}
                 roomId={roomId}
@@ -211,7 +212,8 @@ const EditorPage = ({ language }) => {
                 language="javascript"
                 value={js}
             />
-        )}
+        ): (
+        <p> Choose a language </p>)}
             </div>
 
         </div>

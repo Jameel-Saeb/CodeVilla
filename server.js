@@ -34,7 +34,7 @@ function getLatestCodeForRoom(roomId, language) {
         return roomStates[roomId][language];
     }
     // Return a default empty string if no code is found
-    return '';
+    return 'empty code';
 }
 
 function updateRoomCode(roomId, language, code) {
@@ -51,6 +51,14 @@ io.on('connection', (socket) => {
         userSocketMap[socket.id] = username;
         socket.join(roomId);
         const clients = getAllConnectedClients(roomId);
+
+        // Send the current code states to the new user for each language
+        ['html', 'css', 'javascript'].forEach((language) => {
+            const code = getLatestCodeForRoom(roomId, language);
+            // Make sure to emit to the newly joined socket only
+            io.to(socket.id).emit(ACTIONS.CODE_CHANGE, { code, language });
+        });
+
         clients.forEach(({ socketId }) => {
             io.to(socketId).emit(ACTIONS.JOINED, {
                 clients,
@@ -59,6 +67,7 @@ io.on('connection', (socket) => {
             });
         });
     });
+    
 
     socket.on(ACTIONS.CODE_CHANGE, ({ roomId, code, language }) => {
         // Update the room's code for the specific language
@@ -92,6 +101,11 @@ io.on('connection', (socket) => {
         });
         delete userSocketMap[socket.id];
         socket.leave();
+    });
+
+    socket.on(ACTIONS.REQUEST_LATEST_CODE, ({ roomId, language }) => {
+        const code = getLatestCodeForRoom(roomId, language);
+        io.to(socket.id).emit(ACTIONS.CODE_CHANGE, { code, language });
     });
 });
 
